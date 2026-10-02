@@ -10,6 +10,6 @@ terraform {
 }
 
 provider "google" {
-  project = "mohan-sre-assessment-20261001"
-  region  = "us-central1"
+  project = var.project_id
+  region  = var.region
 }
