@@ -15,6 +15,34 @@ resource "google_container_cluster" "primary" {
     services_secondary_range_name = "gke-services"
   }
 
+  # Private worker nodes, public control-plane endpoint for now
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false
+    master_ipv4_cidr_block  = "172.16.0.0/28"
+  }
+
+  network_policy {
+    enabled = true
+  }
+
+  enable_intranode_visibility = true
+
+  master_auth {
+    client_certificate_config {
+      issue_client_certificate = false
+    }
+  }
+
+  release_channel {
+    channel = "REGULAR"
+  }
+
+  resource_labels = {
+    environment = "assessment"
+    managed_by  = "terraform"
+  }
+
   workload_identity_config {
     workload_pool = "${var.project_id}.svc.id.goog"
   }
@@ -30,6 +58,11 @@ resource "google_container_node_pool" "primary_nodes" {
   cluster    = google_container_cluster.primary.name
   node_count = 1
 
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
   node_config {
     machine_type = "e2-standard-2"
 
@@ -43,6 +76,11 @@ resource "google_container_node_pool" "primary_nodes" {
 
     workload_metadata_config {
       mode = "GKE_METADATA"
+    }
+
+    shielded_instance_config {
+      enable_secure_boot          = true
+      enable_integrity_monitoring = true
     }
   }
 }
