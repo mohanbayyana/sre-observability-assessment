@@ -56,6 +56,31 @@ resource "google_container_cluster" "primary" {
   depends_on = [
     google_project_service.container
   ]
+
+  logging_config {
+    enable_components = [
+      "SYSTEM_COMPONENTS",
+      "WORKLOADS"
+    ]
+  }
+
+  monitoring_config {
+    enable_components = [
+      "SYSTEM_COMPONENTS",
+      "POD",
+      "DEPLOYMENT",
+      "STATEFULSET",
+      "DAEMONSET",
+      "HPA",
+      "STORAGE",
+      "CADVISOR",
+      "KUBELET"
+    ]
+
+    managed_prometheus {
+      enabled = true
+    }
+  }
 }
 
 resource "google_container_node_pool" "primary_nodes" {
