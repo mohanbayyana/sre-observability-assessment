@@ -1,0 +1,54 @@
+replicas: 1
+
+testFramework:
+  enabled: false
+
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 3000
+
+persistence:
+  enabled: true
+  size: 5Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 472
+  runAsGroup: 472
+  fsGroup: 472
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+serviceAccount:
+  automountServiceAccountToken: false
+
+networkPolicy:
+  enabled: true
+
+image:
+  pullPolicy: Always
+
+initChownData:
+  enabled: false
+
+adminUser: admin
+
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
