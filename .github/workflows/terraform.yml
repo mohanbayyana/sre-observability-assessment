@@ -66,6 +66,7 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Render Grafana Kubernetes manifests
+        if: ${{ hashFiles('kubernetes/observability/grafana/values.yaml') != '' }}
         working-directory: .
         run: |
           mkdir -p rendered
@@ -77,12 +78,13 @@ jobs:
             > rendered/grafana.yaml
 
       - name: Checkov Kubernetes scan
+        if: ${{ hashFiles('kubernetes/observability/grafana/values.yaml') != '' }}
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: rendered
           framework: kubernetes
           quiet: true
-          soft_fail: false    
+          soft_fail: false  
 
       - name: Initialize TFLint
         run: tflint --init
