@@ -22,3 +22,15 @@ output "subnet_region" {
   description = "Region of the primary GKE subnet"
   value       = google_compute_subnetwork.gke_subnet.region
 }
+
+output "project_id" {
+  value = var.project_id
+}
+
+output "region" {
+  value = var.region
+}
+
+output "gke_cluster_name" {
+  value = google_container_cluster.primary.name
+}
