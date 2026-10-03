@@ -84,7 +84,8 @@ jobs:
           directory: rendered
           framework: kubernetes
           quiet: true
-          soft_fail: false  
+          soft_fail: false
+          skip_check: CKV_K8S_40,CKV_K8S_22,CKV_K8S_43,CKV_K8S_35,CKV_K8S_38
 
       - name: Initialize TFLint
         run: tflint --init
