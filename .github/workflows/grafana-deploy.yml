@@ -23,6 +23,11 @@ jobs:
 
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+      - name: Verify GKE auth plugin
+        run: |
+          gke-gcloud-auth-plugin --version
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -35,9 +40,15 @@ jobs:
         run: |
           terraform init -input=false
 
-          echo "project_id=$(terraform output -raw project_id)" >> "$GITHUB_OUTPUT"
-          echo "region=$(terraform output -raw region)" >> "$GITHUB_OUTPUT"
-          echo "cluster=$(terraform output -raw gke_cluster_name)" >> "$GITHUB_OUTPUT"
+          PROJECT_ID=$(terraform output -raw project_id)
+          REGION=$(terraform output -raw region)
+          CLUSTER=$(terraform output -raw gke_cluster_name)
+
+          {
+            echo "project_id=$PROJECT_ID"
+            echo "region=$REGION"
+            echo "cluster=$CLUSTER"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Get GKE credentials
         run: |
