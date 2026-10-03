@@ -7,7 +7,7 @@ variable "project_id" {
 variable "region" {
   description = "Primary GCP region"
   type        = string
-  default     = "us-central1"
+  default     = "us-east1"
 }
 
 variable "subnet_cidr" {
