@@ -2,7 +2,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: sre-observability-app
-  namespace: default
+  namespace: sre-app
+
 spec:
   type: LoadBalancer
 
