@@ -67,6 +67,11 @@ jobs:
             FAILED=1
           fi
 
+          echo "=== podmonitoring.yaml ==="
+          if ! yamllint -f parsable kubernetes/app/podmonitoring.yaml; then
+            FAILED=1
+          fi
+
           exit "$FAILED"
 
       - name: Scan Python dependencies
@@ -151,6 +156,8 @@ jobs:
           kubectl apply -f kubernetes/app/namespace.yaml
 
           kubectl apply -f kubernetes/app/networkpolicy.yaml
+
+          kubectl apply -f kubernetes/app/podmonitoring.yaml
 
           sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" \
             kubernetes/app/deployment.yaml \
