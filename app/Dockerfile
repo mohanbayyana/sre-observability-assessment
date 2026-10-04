@@ -9,12 +9,12 @@ RUN apt-get update \
 COPY requirements.txt .
 
 RUN python -m pip install --no-cache-dir --upgrade \
-      pip \
-      "setuptools>=78.1.1" \
+      pip==26.2.1 \
+      setuptools==78.1.1 \
     && python -m pip install --no-cache-dir -r requirements.txt \
     && python -m pip install --no-cache-dir \
-      "msgpack>=1.2.1" \
-      "urllib3>=2.8.0"
+      msgpack==1.2.1 \
+      urllib3==2.8.0
 
 COPY app.py .
 
