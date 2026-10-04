@@ -3,6 +3,22 @@ replicas: 1
 testFramework:
   enabled: false
 
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: default
+        orgId: 1
+        folder: GKE
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+dashboardsConfigMaps:
+  default: grafana-dashboards
+
 service:
   type: LoadBalancer
   port: 80

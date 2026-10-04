@@ -64,6 +64,14 @@ jobs:
             --dry-run=client \
             -o yaml | kubectl apply -f -
 
+      - name: Create Grafana dashboard ConfigMap
+        run: |
+          kubectl create configmap grafana-dashboards \
+            --namespace monitoring \
+            --from-file=gke-observability.json=kubernetes/observability/grafana/dashboards/gke-observability.json \
+            --dry-run=client \
+            -o yaml | kubectl apply -f -
+
       - name: Create Grafana admin secret
         run: |
           kubectl create secret generic grafana-admin \
