@@ -1,16 +1,13 @@
 name: Terraform CI
 
 on:
+  push:
+    branches:
+      - "**"
+
   pull_request:
     branches:
       - main
-
-  push:
-    branches:
-      - main
-      - "feature/**"
-      - "fix/**"
-      - "ci/**"
 
   workflow_dispatch:
 
