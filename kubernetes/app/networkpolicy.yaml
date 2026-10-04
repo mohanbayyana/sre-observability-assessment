@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sre-observability-app
+  namespace: sre-app
+
+spec:
+  podSelector:
+    matchLabels:
+      app: sre-observability-app
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+
+  egress:
+    - {}
