@@ -162,31 +162,46 @@ jobs:
             exit 1
           fi
 
-          echo "Creating Grafana service account token..."
+          echo "Checking Kubernetes secret..."
 
-          TOKEN_RESPONSE=$(
-            curl -fsS \
-              -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
-              -H "Content-Type: application/json" \
-              -X POST \
-              -d '{"name":"datasource-syncer-token"}' \
-              "${GRAFANA_URL}/api/serviceaccounts/${SERVICE_ACCOUNT_ID}/tokens"
+          EXISTING_TOKEN=$(
+            kubectl get secret grafana-datasource-syncer \
+              -n monitoring \
+              -o jsonpath='{.data.token}' \
+              2>/dev/null || true
           )
 
-          GRAFANA_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq -r '.key')
+          if [ -n "${EXISTING_TOKEN}" ]; then
+            echo "Grafana datasource syncer token already exists in Kubernetes."
+          else
+            echo "Creating Grafana service account token..."
 
-          if [ -z "${GRAFANA_TOKEN}" ] || [ "${GRAFANA_TOKEN}" = "null" ]; then
-            echo "Failed to generate Grafana service account token."
-            exit 1
+            TOKEN_NAME="datasource-syncer-${GITHUB_RUN_ID}"
+
+            TOKEN_RESPONSE=$(
+              curl -fsS \
+                -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+                -H "Content-Type: application/json" \
+                -X POST \
+                -d "{\"name\":\"${TOKEN_NAME}\"}" \
+                "${GRAFANA_URL}/api/serviceaccounts/${SERVICE_ACCOUNT_ID}/tokens"
+            )
+
+            GRAFANA_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq -r '.key')
+
+            if [ -z "${GRAFANA_TOKEN}" ] || [ "${GRAFANA_TOKEN}" = "null" ]; then
+              echo "Failed to generate Grafana service account token."
+              exit 1
+            fi
+
+            kubectl create secret generic grafana-datasource-syncer \
+              --namespace monitoring \
+              --from-literal=token="${GRAFANA_TOKEN}" \
+              --dry-run=client \
+              -o yaml | kubectl apply -f -
+
+            echo "Grafana datasource syncer credentials configured."
           fi
-
-          kubectl create secret generic grafana-datasource-syncer \
-            --namespace monitoring \
-            --from-literal=token="${GRAFANA_TOKEN}" \
-            --dry-run=client \
-            -o yaml | kubectl apply -f -
-
-          echo "Grafana datasource syncer credentials configured."
 
       - name: Deploy Managed Prometheus datasource syncer
         run: |
