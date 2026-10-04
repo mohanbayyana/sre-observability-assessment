@@ -119,6 +119,75 @@ jobs:
             datasource-syncer-${{ github.run_number }} \
             -n monitoring
 
+      - name: Create Grafana datasource syncer credentials
+        env:
+          GRAFANA_ADMIN_USER: ${{ secrets.GRAFANA_ADMIN_USER }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          GRAFANA_URL="http://grafana.monitoring.svc.cluster.local"
+
+          echo "Checking for Grafana service account..."
+
+          SERVICE_ACCOUNT_ID=$(
+            curl -sS \
+              -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+              "${GRAFANA_URL}/api/serviceaccounts/search?query=grafana-datasource-syncer" \
+            | jq -r '.serviceAccounts[]? |
+                select(.name=="grafana-datasource-syncer") |
+                .id' \
+            | head -n1
+          )
+
+          if [ -z "${SERVICE_ACCOUNT_ID}" ]; then
+            echo "Creating Grafana service account..."
+
+            RESPONSE=$(
+              curl -sS \
+                -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+                -H "Content-Type: application/json" \
+                -X POST \
+                -d '{"name":"grafana-datasource-syncer","role":"Admin"}' \
+                "${GRAFANA_URL}/api/serviceaccounts"
+          )
+
+            SERVICE_ACCOUNT_ID=$(echo "${RESPONSE}" | jq -r '.id')
+          fi
+
+          if [ -z "${SERVICE_ACCOUNT_ID}" ] || [ "${SERVICE_ACCOUNT_ID}" = "null" ]; then
+            echo "Unable to determine Grafana service account ID."
+            exit 1
+          fi
+
+          echo "Creating Grafana service account token..."
+
+          TOKEN_RESPONSE=$(
+            curl -sS \
+              -u "${GRAFANA_ADMIN_USER}:${GRAFANA_ADMIN_PASSWORD}" \
+              -H "Content-Type: application/json" \
+              -X POST \
+              -d '{"name":"datasource-syncer-token"}' \
+              "${GRAFANA_URL}/api/serviceaccounts/${SERVICE_ACCOUNT_ID}/tokens"
+           )
+
+           GRAFANA_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq -r '.key')
+
+           if [ -z "${GRAFANA_TOKEN}" ] || [ "${GRAFANA_TOKEN}" = "null" ]; then
+             echo "Failed to generate Grafana service account token."
+           exit 1
+           fi
+
+           echo "Creating Kubernetes secret..."
+
+           kubectl create secret generic grafana-datasource-syncer \
+             --namespace monitoring \
+             --from-literal=token="${GRAFANA_TOKEN}" \
+             --dry-run=client -o yaml \
+             | kubectl apply -f -
+
+           echo "Grafana datasource syncer credentials configured."
+
       - name: Verify datasource syncer
         run: |
           kubectl get cronjob datasource-syncer -n monitoring
