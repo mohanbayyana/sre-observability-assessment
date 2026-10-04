@@ -23,6 +23,61 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Validate Python syntax
+        run: |
+          python -m py_compile app/app.py
+
+      - name: Install validation tools
+        run: |
+          python -m pip install --upgrade pip
+
+      - name: Install validation tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            yamllint \
+            checkov==3.3.20 \
+            pip-audit
+
+      - name: Run YAML lint
+        run: |
+          yamllint kubernetes/app/deployment.yaml
+          yamllint kubernetes/app/service.yaml
+          yamllint .github/workflows/app-deploy.yml
+
+      - name: Scan Python dependencies
+        run: |
+          pip-audit -r app/requirements.txt
+
+      - name: Install actionlint
+        run: |
+          bash <(
+            curl -sSfL \
+              https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash
+          )
+
+      - name: Run actionlint
+        run: |
+          ./actionlint .github/workflows/app-deploy.yml
+
+      - name: Run Hadolint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: app/Dockerfile
+          failure-threshold: warning
+
+      - name: Run Checkov Kubernetes scan
+        run: |
+          checkov \
+            -d kubernetes/app \
+            --framework kubernetes \
+            --compact
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v3
         with:
@@ -38,7 +93,7 @@ jobs:
         run: |
           gcloud auth configure-docker us-east1-docker.pkg.dev --quiet
 
-      - name: Build and push application image
+      - name: Build application image
         env:
           PROJECT_ID: mohan-sre-assessment-20261001
           REGION: us-east1
@@ -46,15 +101,24 @@ jobs:
         run: |
           IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/sre-observability-app:${GITHUB_SHA}"
 
-          echo "Building image: ${IMAGE_URI}"
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
 
           docker build \
             -t "${IMAGE_URI}" \
             app
 
-          docker push "${IMAGE_URI}"
+      - name: Scan container image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.IMAGE_URI }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
 
-          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+      - name: Push application image
+        run: |
+          docker push "${IMAGE_URI}"
 
       - name: Get GKE credentials
         run: |
