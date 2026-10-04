@@ -29,7 +29,6 @@ jobs:
           python-version: "3.13"
 
       - name: Validate Python syntax
-        continue-on-error: true
         run: |
           python -m py_compile app/app.py
 
@@ -42,7 +41,6 @@ jobs:
             pip-audit
 
       - name: Run YAML lint
-        continue-on-error: true
         run: |
           FAILED=0
 
@@ -72,7 +70,6 @@ jobs:
           exit "$FAILED"
 
       - name: Scan Python dependencies
-        continue-on-error: true
         run: |
           pip-audit -r app/requirements.txt
 
@@ -84,19 +81,16 @@ jobs:
           )
 
       - name: Run actionlint
-        continue-on-error: true
         run: |
           ./actionlint .github/workflows/app-deploy.yml
 
       - name: Run Hadolint
-        continue-on-error: true
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: app/Dockerfile
           failure-threshold: warning
 
       - name: Run Checkov Kubernetes scan
-        continue-on-error: true
         run: |
           checkov \
             -d kubernetes/app \
@@ -133,7 +127,6 @@ jobs:
             app
 
       - name: Scan container image with Trivy
-        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.IMAGE_URI }}
