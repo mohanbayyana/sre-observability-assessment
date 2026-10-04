@@ -88,11 +88,41 @@ jobs:
             --namespace monitoring \
             --values kubernetes/observability/grafana/values.yaml
 
+      - name: Create Grafana datasource syncer secret
+        env:
+          GRAFANA_DATASOURCE_SYNCER_TOKEN: ${{ secrets.GRAFANA_DATASOURCE_SYNCER_TOKEN }}
+        run: |
+          kubectl create secret generic grafana-datasource-syncer \
+            --namespace monitoring \
+            --from-literal=token="$GRAFANA_DATASOURCE_SYNCER_TOKEN" \
+            --dry-run=client -o yaml \
+            | kubectl apply -f -
+
+      - name: Deploy Managed Prometheus datasource syncer
+        run: |
+          kubectl apply \
+            -f kubernetes/observability/grafana/gmp-syncer-serviceaccount.yaml
+
+          kubectl apply \
+            -f kubernetes/observability/grafana/gmp-datasource-syncer.yaml
+
       - name: Verify Grafana rollout
         run: |
           kubectl rollout status deployment/grafana \
             -n monitoring \
             --timeout=5m
+
+      - name: Run datasource syncer immediately
+        run: |
+          kubectl create job \
+            --from=cronjob/datasource-syncer \
+            datasource-syncer-${{ github.run_number }} \
+            -n monitoring
+
+      - name: Verify datasource syncer
+        run: |
+          kubectl get cronjob datasource-syncer -n monitoring
+          kubectl get jobs -n monitoring
 
           kubectl get pods -n monitoring
           kubectl get svc -n monitoring
