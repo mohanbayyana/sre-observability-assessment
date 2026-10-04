@@ -2,9 +2,19 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir --upgrade \
+      pip \
+      "setuptools>=78.1.1" \
+    && python -m pip install --no-cache-dir -r requirements.txt \
+    && python -m pip install --no-cache-dir \
+      "msgpack>=1.2.1" \
+      "urllib3>=2.8.0"
 
 COPY app.py .
 

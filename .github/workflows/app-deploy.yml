@@ -157,6 +157,8 @@ jobs:
         run: |
           kubectl apply -f kubernetes/app/namespace.yaml
 
+          kubectl apply -f kubernetes/app/networkpolicy.yaml
+
           sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" \
             kubernetes/app/deployment.yaml \
             | kubectl apply -f -
