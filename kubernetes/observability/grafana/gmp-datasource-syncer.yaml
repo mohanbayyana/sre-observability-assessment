@@ -14,6 +14,10 @@ spec:
       template:
         spec:
           serviceAccountName: gmp-ds-syncer
+
+          nodeSelector:
+            iam.gke.io/gke-metadata-server-enabled: "true"
+
           restartPolicy: Never
 
           containers:
