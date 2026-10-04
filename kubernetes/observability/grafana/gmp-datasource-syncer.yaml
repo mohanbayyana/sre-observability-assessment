@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: datasource-syncer
+  namespace: monitoring
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: gmp-ds-syncer
+          restartPolicy: Never
+
+          containers:
+            - name: datasource-syncer
+              image: gke.gcr.io/prometheus-engine/datasource-syncer:v0.17.2-gke.2
+
+              args:
+                - "--datasource-uids=managed-prometheus"
+                - "--grafana-api-endpoint=http://grafana.monitoring.svc.cluster.local"
+                - "--project-id=mohan-sre-assessment-20261001"
+
+              env:
+                - name: GRAFANA_SERVICE_ACCOUNT_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-datasource-syncer
+                      key: token
