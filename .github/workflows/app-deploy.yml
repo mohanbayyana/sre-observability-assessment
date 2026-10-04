@@ -129,6 +129,8 @@ jobs:
 
       - name: Deploy application
         run: |
+          kubectl apply -f kubernetes/app/namespace.yaml
+
           sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" \
             kubernetes/app/deployment.yaml \
             | kubectl apply -f -
@@ -140,10 +142,13 @@ jobs:
         run: |
           kubectl rollout status \
             deployment/sre-observability-app \
+            -n sre-app \
             --timeout=5m
 
           kubectl get pods \
+            -n sre-app \
             -l app=sre-observability-app
 
           kubectl get service \
-            sre-observability-app
+            sre-observability-app \
+            -n sre-app
