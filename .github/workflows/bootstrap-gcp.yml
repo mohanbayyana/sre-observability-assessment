@@ -132,14 +132,18 @@ jobs:
 
           GATEWAY_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-multiclusteringress.iam.gserviceaccount.com"
 
-          echo "Gateway service agent:"
-          echo "${GATEWAY_SERVICE_AGENT}"
+          for ROLE in \
+            roles/container.admin \
+            roles/multiclusteringress.serviceAgent
+          do
+            echo "Ensuring ${ROLE}"
 
-          gcloud projects add-iam-policy-binding \
-            "${PROJECT_ID}" \
-            --member="serviceAccount:${GATEWAY_SERVICE_AGENT}" \
-            --role="roles/container.admin" \
-            --quiet
+            gcloud projects add-iam-policy-binding \
+              "${PROJECT_ID}" \
+              --member="serviceAccount:${GATEWAY_SERVICE_AGENT}" \
+              --role="${ROLE}" \
+              --quiet
+          done
 
       # ---------------------------------------------------------
       # MULTI-CLUSTER SERVICES SERVICE IDENTITY
@@ -160,9 +164,6 @@ jobs:
           set -euo pipefail
 
           MCS_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-mcsd.iam.gserviceaccount.com"
-
-          echo "MCS service agent:"
-          echo "${MCS_SERVICE_AGENT}"
 
           gcloud projects add-iam-policy-binding \
             "${PROJECT_ID}" \
