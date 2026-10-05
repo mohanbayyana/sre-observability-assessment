@@ -1,0 +1,273 @@
+name: Bootstrap GCP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  bootstrap:
+    name: Bootstrap GCP prerequisites
+    runs-on: ubuntu-latest
+
+    env:
+      PROJECT_ID: mohan-sre-assessment-20261001
+      TERRAFORM_SA: terraform-github@mohan-sre-assessment-20261001.iam.gserviceaccount.com
+      TF_STATE_BUCKET: mohan-sre-assessment-20261001-tfstate
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---------------------------------------------------------
+      # AUTHENTICATION
+      # ---------------------------------------------------------
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      # ---------------------------------------------------------
+      # PROJECT INFORMATION
+      # ---------------------------------------------------------
+
+      - name: Get GCP project information
+        run: |
+          set -euo pipefail
+
+          PROJECT_NUMBER="$(
+            gcloud projects describe "${PROJECT_ID}" \
+              --format="value(projectNumber)"
+          )"
+
+          echo "PROJECT_NUMBER=${PROJECT_NUMBER}" >> "$GITHUB_ENV"
+
+          echo "Project ID: ${PROJECT_ID}"
+          echo "Project Number: ${PROJECT_NUMBER}"
+
+      # ---------------------------------------------------------
+      # REQUIRED GOOGLE CLOUD APIS
+      # ---------------------------------------------------------
+
+      - name: Enable required GCP APIs
+        run: |
+          set -euo pipefail
+
+          echo "=== Enabling required APIs ==="
+
+          gcloud services enable \
+            compute.googleapis.com \
+            container.googleapis.com \
+            artifactregistry.googleapis.com \
+            iam.googleapis.com \
+            iamcredentials.googleapis.com \
+            sts.googleapis.com \
+            serviceusage.googleapis.com \
+            logging.googleapis.com \
+            monitoring.googleapis.com \
+            gkehub.googleapis.com \
+            multiclusterservicediscovery.googleapis.com \
+            multiclusteringress.googleapis.com \
+            trafficdirector.googleapis.com \
+            cloudresourcemanager.googleapis.com \
+            --project="${PROJECT_ID}" \
+            --quiet
+
+          echo "Required APIs enabled."
+
+      # ---------------------------------------------------------
+      # TERRAFORM SERVICE ACCOUNT IAM
+      # ---------------------------------------------------------
+
+      - name: Configure Terraform service account IAM
+        run: |
+          set -euo pipefail
+
+          echo "=== Configuring Terraform service account IAM ==="
+
+          for ROLE in \
+            roles/artifactregistry.admin \
+            roles/compute.networkAdmin \
+            roles/compute.securityAdmin \
+            roles/container.admin \
+            roles/gkehub.admin \
+            roles/iam.serviceAccountAdmin \
+            roles/resourcemanager.projectIamAdmin \
+            roles/serviceusage.serviceUsageAdmin
+          do
+            echo "Ensuring ${ROLE}"
+
+            gcloud projects add-iam-policy-binding \
+              "${PROJECT_ID}" \
+              --member="serviceAccount:${TERRAFORM_SA}" \
+              --role="${ROLE}" \
+              --quiet
+          done
+
+      # ---------------------------------------------------------
+      # TERRAFORM STATE BUCKET ACCESS
+      # ---------------------------------------------------------
+
+      - name: Configure Terraform state bucket IAM
+        run: |
+          set -euo pipefail
+
+          echo "=== Checking Terraform state bucket ==="
+
+          if gcloud storage buckets describe \
+            "gs://${TF_STATE_BUCKET}" \
+            --project="${PROJECT_ID}" \
+            >/dev/null 2>&1; then
+
+            echo "State bucket exists."
+
+            gcloud storage buckets add-iam-policy-binding \
+              "gs://${TF_STATE_BUCKET}" \
+              --member="serviceAccount:${TERRAFORM_SA}" \
+              --role="roles/storage.objectAdmin"
+
+          else
+            echo "ERROR: Terraform state bucket does not exist:"
+            echo "gs://${TF_STATE_BUCKET}"
+            exit 1
+          fi
+
+      # ---------------------------------------------------------
+      # MULTI-CLUSTER GATEWAY SERVICE IDENTITY
+      # ---------------------------------------------------------
+
+      - name: Create Multi-cluster Gateway service identity
+        run: |
+          set -euo pipefail
+
+          echo "=== Creating Multi-cluster Gateway service identity ==="
+
+          gcloud beta services identity create \
+            --service=multiclusteringress.googleapis.com \
+            --project="${PROJECT_ID}"
+
+      - name: Configure Multi-cluster Gateway service agent IAM
+        run: |
+          set -euo pipefail
+
+          GATEWAY_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-multiclusteringress.iam.gserviceaccount.com"
+
+          echo "Gateway service agent:"
+          echo "${GATEWAY_SERVICE_AGENT}"
+
+          gcloud projects add-iam-policy-binding \
+            "${PROJECT_ID}" \
+            --member="serviceAccount:${GATEWAY_SERVICE_AGENT}" \
+            --role="roles/container.admin" \
+            --quiet
+
+      # ---------------------------------------------------------
+      # MULTI-CLUSTER SERVICES SERVICE IDENTITY
+      # ---------------------------------------------------------
+
+      - name: Create Multi-cluster Services service identity
+        run: |
+          set -euo pipefail
+
+          echo "=== Creating Multi-cluster Services service identity ==="
+
+          gcloud beta services identity create \
+            --service=multiclusterservicediscovery.googleapis.com \
+            --project="${PROJECT_ID}"
+
+      - name: Configure Multi-cluster Services service agent IAM
+        run: |
+          set -euo pipefail
+
+          MCS_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-mcsd.iam.gserviceaccount.com"
+
+          echo "MCS service agent:"
+          echo "${MCS_SERVICE_AGENT}"
+
+          gcloud projects add-iam-policy-binding \
+            "${PROJECT_ID}" \
+            --member="serviceAccount:${MCS_SERVICE_AGENT}" \
+            --role="roles/multiclusterservicediscovery.serviceAgent" \
+            --quiet
+
+      # ---------------------------------------------------------
+      # VERIFICATION
+      # ---------------------------------------------------------
+
+      - name: Verify Terraform service account IAM
+        run: |
+          set -euo pipefail
+
+          echo "=== Terraform service account roles ==="
+
+          gcloud projects get-iam-policy \
+            "${PROJECT_ID}" \
+            --flatten="bindings[].members" \
+            --filter="bindings.members:${TERRAFORM_SA}" \
+            --format="table(bindings.role)"
+
+      - name: Verify multi-cluster APIs
+        run: |
+          set -euo pipefail
+
+          echo "=== Enabled multi-cluster APIs ==="
+
+          FILTER_EXPR="config.name:("
+          FILTER_EXPR+="gkehub.googleapis.com "
+          FILTER_EXPR+="multiclusterservicediscovery.googleapis.com "
+          FILTER_EXPR+="multiclusteringress.googleapis.com "
+          FILTER_EXPR+="trafficdirector.googleapis.com)"
+
+          gcloud services list \
+            --enabled \
+            --project="${PROJECT_ID}" \
+            --filter="${FILTER_EXPR}" \
+            --format="table(config.name)"
+
+      - name: Verify Gateway service agent IAM
+        run: |
+          set -euo pipefail
+
+          GATEWAY_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-multiclusteringress.iam.gserviceaccount.com"
+
+          echo "=== Gateway service agent roles ==="
+
+          gcloud projects get-iam-policy \
+            "${PROJECT_ID}" \
+            --flatten="bindings[].members" \
+            --filter="bindings.members:${GATEWAY_SERVICE_AGENT}" \
+            --format="table(bindings.role)"
+
+      - name: Verify MCS service agent IAM
+        run: |
+          set -euo pipefail
+
+          MCS_SERVICE_AGENT="service-${PROJECT_NUMBER}@gcp-sa-mcsd.iam.gserviceaccount.com"
+
+          echo "=== MCS service agent roles ==="
+
+          gcloud projects get-iam-policy \
+            "${PROJECT_ID}" \
+            --flatten="bindings[].members" \
+            --filter="bindings.members:${MCS_SERVICE_AGENT}" \
+            --format="table(bindings.role)"
+
+      - name: Bootstrap summary
+        run: |
+          echo "=========================================="
+          echo "GCP bootstrap completed successfully"
+          echo "=========================================="
+          echo "Project: ${PROJECT_ID}"
+          echo "Project Number: ${PROJECT_NUMBER}"
+          echo "Terraform SA: ${TERRAFORM_SA}"
+          echo "State Bucket: gs://${TF_STATE_BUCKET}"
+          echo
+          echo "Next step:"
+          echo "Run Terraform Plan and Terraform Apply."
