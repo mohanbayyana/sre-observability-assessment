@@ -27,3 +27,27 @@ variable "services_cidr" {
   type        = string
   default     = "10.110.0.0/20"
 }
+
+variable "secondary_region" {
+  description = "Region for the secondary GKE cluster"
+  type        = string
+  default     = "us-west1"
+}
+
+variable "secondary_subnet_cidr" {
+  description = "CIDR range for the secondary GKE subnet"
+  type        = string
+  default     = "10.20.0.0/20"
+}
+
+variable "secondary_pods_cidr" {
+  description = "Secondary IP range for secondary GKE pods"
+  type        = string
+  default     = "10.120.0.0/16"
+}
+
+variable "secondary_services_cidr" {
+  description = "Secondary IP range for secondary GKE services"
+  type        = string
+  default     = "10.130.0.0/20"
+}

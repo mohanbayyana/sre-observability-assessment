@@ -34,3 +34,11 @@ output "region" {
 output "gke_cluster_name" {
   value = google_container_cluster.primary.name
 }
+
+output "secondary_region" {
+  value = var.secondary_region
+}
+
+output "secondary_gke_cluster_name" {
+  value = google_container_cluster.secondary.name
+}
