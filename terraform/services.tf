@@ -21,3 +21,38 @@ resource "google_project_service" "monitoring" {
   service            = "monitoring.googleapis.com"
   disable_on_destroy = false
 }
+resource "google_project_service" "gkehub" {
+  project            = var.project_id
+  service            = "gkehub.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "mcs" {
+  project            = var.project_id
+  service            = "multiclusterservicediscovery.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "multicluster_ingress" {
+  project            = var.project_id
+  service            = "multiclusteringress.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "traffic_director" {
+  project            = var.project_id
+  service            = "trafficdirector.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "dns" {
+  project            = var.project_id
+  service            = "dns.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "resource_manager" {
+  project            = var.project_id
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}

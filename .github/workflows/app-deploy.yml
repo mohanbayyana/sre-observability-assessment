@@ -7,6 +7,7 @@ on:
     paths:
       - "app/**"
       - "kubernetes/app/**"
+      - "kubernetes/gateway/**"
       - ".github/workflows/app-deploy.yml"
 
   workflow_dispatch:
@@ -47,30 +48,23 @@ jobs:
           echo "=== yamllint version ==="
           yamllint --version
 
-          echo "=== deployment.yaml ==="
-          if ! yamllint -f parsable kubernetes/app/deployment.yaml; then
-            FAILED=1
-          fi
+          for file in \
+            kubernetes/app/deployment.yaml \
+            kubernetes/app/service.yaml \
+            kubernetes/app/namespace.yaml \
+            kubernetes/app/networkpolicy.yaml \
+            kubernetes/app/podmonitoring.yaml \
+            kubernetes/app/serviceexport.yaml \
+            kubernetes/gateway/gateway.yaml \
+            kubernetes/gateway/httproute.yaml \
+            .github/workflows/app-deploy.yml
+          do
+            echo "=== ${file} ==="
 
-          echo "=== service.yaml ==="
-          if ! yamllint -f parsable kubernetes/app/service.yaml; then
-            FAILED=1
-          fi
-
-          echo "=== namespace.yaml ==="
-          if ! yamllint -f parsable kubernetes/app/namespace.yaml; then
-            FAILED=1
-          fi
-
-          echo "=== app-deploy.yml ==="
-          if ! yamllint -f parsable .github/workflows/app-deploy.yml; then
-            FAILED=1
-          fi
-
-          echo "=== podmonitoring.yaml ==="
-          if ! yamllint -f parsable kubernetes/app/podmonitoring.yaml; then
-            FAILED=1
-          fi
+            if ! yamllint -f parsable "${file}"; then
+              FAILED=1
+            fi
+          done
 
           exit "$FAILED"
 
@@ -144,12 +138,9 @@ jobs:
         run: |
           docker push "${IMAGE_URI}"
 
-      - name: Get GKE credentials
-        run: |
-          gcloud container clusters get-credentials \
-            gke-primary \
-            --region us-east1 \
-            --project mohan-sre-assessment-20261001
+      # ---------------------------------------------------------
+      # PRIMARY CLUSTER
+      # ---------------------------------------------------------
 
       - name: Get primary GKE credentials
         run: |
@@ -162,14 +153,14 @@ jobs:
         run: |
           kubectl apply -f kubernetes/app/namespace.yaml
           kubectl apply -f kubernetes/app/networkpolicy.yaml
-          kubectl apply -f kubernetes/app/podmonitoring.yaml
 
           sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" \
             kubernetes/app/deployment.yaml \
             | kubectl apply -f -
 
-          kubectl apply \
-            -f kubernetes/app/service.yaml
+          kubectl apply -f kubernetes/app/service.yaml
+          kubectl apply -f kubernetes/app/podmonitoring.yaml
+          kubectl apply -f kubernetes/app/serviceexport.yaml
 
       - name: Verify primary application rollout
         run: |
@@ -189,6 +180,11 @@ jobs:
             sre-observability-app \
             -n sre-app
 
+          echo "=== Primary ServiceExport ==="
+          kubectl get serviceexport \
+            sre-observability-app \
+            -n sre-app
+
           echo "=== Primary image ==="
           kubectl get deployment \
             sre-observability-app \
@@ -196,6 +192,10 @@ jobs:
             -o jsonpath='{.spec.template.spec.containers[0].image}'
 
           echo
+
+      # ---------------------------------------------------------
+      # SECONDARY CLUSTER
+      # ---------------------------------------------------------
 
       - name: Get secondary GKE credentials
         run: |
@@ -208,14 +208,14 @@ jobs:
         run: |
           kubectl apply -f kubernetes/app/namespace.yaml
           kubectl apply -f kubernetes/app/networkpolicy.yaml
-          kubectl apply -f kubernetes/app/podmonitoring.yaml
 
           sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" \
             kubernetes/app/deployment.yaml \
             | kubectl apply -f -
 
-          kubectl apply \
-            -f kubernetes/app/service.yaml
+          kubectl apply -f kubernetes/app/service.yaml
+          kubectl apply -f kubernetes/app/podmonitoring.yaml
+          kubectl apply -f kubernetes/app/serviceexport.yaml
 
       - name: Verify secondary application rollout
         run: |
@@ -235,6 +235,11 @@ jobs:
             sre-observability-app \
             -n sre-app
 
+          echo "=== Secondary ServiceExport ==="
+          kubectl get serviceexport \
+            sre-observability-app \
+            -n sre-app
+
           echo "=== Secondary image ==="
           kubectl get deployment \
             sre-observability-app \
@@ -243,32 +248,59 @@ jobs:
 
           echo
 
-      - name: Deploy application
+      # ---------------------------------------------------------
+      # GLOBAL MULTI-CLUSTER GATEWAY
+      # gke-primary is the Fleet config cluster
+      # ---------------------------------------------------------
+
+      - name: Get Gateway config cluster credentials
         run: |
-          kubectl apply -f kubernetes/app/namespace.yaml
+          gcloud container clusters get-credentials \
+            gke-primary \
+            --region us-east1 \
+            --project mohan-sre-assessment-20261001
 
-          kubectl apply -f kubernetes/app/networkpolicy.yaml
-
-          kubectl apply -f kubernetes/app/podmonitoring.yaml
-
-          sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" \
-            kubernetes/app/deployment.yaml \
-            | kubectl apply -f -
-
-          kubectl apply \
-            -f kubernetes/app/service.yaml
-
-      - name: Verify application rollout
+      - name: Wait for multi-cluster ServiceImport
         run: |
-          kubectl rollout status \
-            deployment/sre-observability-app \
-            -n sre-app \
-            --timeout=5m
+          echo "Waiting for ServiceImport..."
 
-          kubectl get pods \
-            -n sre-app \
-            -l app=sre-observability-app
+          for i in {1..30}; do
+            if kubectl get serviceimport \
+              sre-observability-app \
+              -n sre-app >/dev/null 2>&1; then
 
-          kubectl get service \
+              echo "ServiceImport is available."
+              kubectl get serviceimport \
+                sre-observability-app \
+                -n sre-app
+              exit 0
+            fi
+
+            echo "ServiceImport not ready yet. Attempt ${i}/30"
+            sleep 20
+          done
+
+          echo "ServiceImport was not created within 10 minutes."
+          exit 1
+
+      - name: Deploy global multi-cluster Gateway
+        run: |
+          kubectl apply -f kubernetes/gateway/gateway.yaml
+          kubectl apply -f kubernetes/gateway/httproute.yaml
+
+      - name: Verify global multi-cluster Gateway
+        run: |
+          echo "=== ServiceImport ==="
+          kubectl get serviceimport \
             sre-observability-app \
+            -n sre-app
+
+          echo "=== Gateway ==="
+          kubectl get gateway \
+            sre-global-gateway \
+            -n sre-app
+
+          echo "=== HTTPRoute ==="
+          kubectl get httproute \
+            sre-observability-route \
             -n sre-app
