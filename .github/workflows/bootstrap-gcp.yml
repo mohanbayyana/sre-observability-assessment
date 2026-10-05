@@ -15,7 +15,6 @@ jobs:
     env:
       PROJECT_ID: mohan-sre-assessment-20261001
       TERRAFORM_SA: terraform-github@mohan-sre-assessment-20261001.iam.gserviceaccount.com
-      TF_STATE_BUCKET: mohan-sre-assessment-20261001-tfstate
 
     steps:
       - name: Checkout repository
@@ -110,34 +109,6 @@ jobs:
               --role="${ROLE}" \
               --quiet
           done
-
-      # ---------------------------------------------------------
-      # TERRAFORM STATE BUCKET ACCESS
-      # ---------------------------------------------------------
-
-      - name: Configure Terraform state bucket IAM
-        run: |
-          set -euo pipefail
-
-          echo "=== Checking Terraform state bucket ==="
-
-          if gcloud storage buckets describe \
-            "gs://${TF_STATE_BUCKET}" \
-            --project="${PROJECT_ID}" \
-            >/dev/null 2>&1; then
-
-            echo "State bucket exists."
-
-            gcloud storage buckets add-iam-policy-binding \
-              "gs://${TF_STATE_BUCKET}" \
-              --member="serviceAccount:${TERRAFORM_SA}" \
-              --role="roles/storage.objectAdmin"
-
-          else
-            echo "ERROR: Terraform state bucket does not exist:"
-            echo "gs://${TF_STATE_BUCKET}"
-            exit 1
-          fi
 
       # ---------------------------------------------------------
       # MULTI-CLUSTER GATEWAY SERVICE IDENTITY
@@ -267,7 +238,6 @@ jobs:
           echo "Project: ${PROJECT_ID}"
           echo "Project Number: ${PROJECT_NUMBER}"
           echo "Terraform SA: ${TERRAFORM_SA}"
-          echo "State Bucket: gs://${TF_STATE_BUCKET}"
           echo
           echo "Next step:"
           echo "Run Terraform Plan and Terraform Apply."
