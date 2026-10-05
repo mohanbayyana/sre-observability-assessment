@@ -7,6 +7,10 @@ resource "google_container_cluster" "primary" {
   name     = "gke-primary"
   location = var.region
 
+  gateway_api_config {
+    channel = "CHANNEL_STANDARD"
+  }
+
   network    = google_compute_network.gke_vpc.name
   subnetwork = google_compute_subnetwork.gke_subnet.name
 
@@ -91,6 +95,10 @@ resource "google_container_cluster" "secondary" {
 
   name     = "gke-secondary"
   location = var.secondary_region
+
+  gateway_api_config {
+    channel = "CHANNEL_STANDARD"
+  }
 
   network    = google_compute_network.gke_vpc.name
   subnetwork = google_compute_subnetwork.gke_secondary_subnet.name
