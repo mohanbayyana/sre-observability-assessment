@@ -80,3 +80,91 @@ datasources:
         url: http://localhost:9090
         isDefault: true
         editable: true
+
+alerting:
+  application-alerts.yaml:
+    apiVersion: 1
+
+    groups:
+      - orgId: 1
+        name: application-sre-alerts
+        folder: GKE
+        interval: 1m
+
+        rules:
+          - uid: app-high-error-rate
+            title: High Application Error Rate
+            condition: C
+
+            data:
+              - refId: A
+                relativeTimeRange:
+                  from: 600
+                  to: 0
+                datasourceUid: managed-prometheus
+                model:
+                  datasource:
+                    type: prometheus
+                    uid: managed-prometheus
+                  editorMode: code
+                  expr: >-
+                    100 *
+                    sum(rate(http_requests_total{status=~"5..",endpoint!="/health",endpoint!="/ready"}[5m]))
+                    /
+                    clamp_min(
+                      sum(rate(http_requests_total{endpoint!="/health",endpoint!="/ready"}[5m])),
+                      0.000001
+                    )
+                  instant: true
+                  intervalMs: 1000
+                  maxDataPoints: 43200
+                  refId: A
+
+              - refId: B
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: A
+                  reducer: last
+                  refId: B
+                  type: reduce
+
+              - refId: C
+                datasourceUid: __expr__
+                model:
+                  datasource:
+                    type: __expr__
+                    uid: __expr__
+                  expression: B
+                  refId: C
+                  type: threshold
+                  conditions:
+                    - evaluator:
+                        params:
+                          - 5
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                          - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+
+            noDataState: OK
+            execErrState: Error
+            for: 5m
+
+            annotations:
+              summary: Application 5xx error rate is above 5 percent
+              description: More than 5 percent of application requests have been failing for 5 minutes.
+
+            labels:
+              severity: warning
+              service: sre-observability-app
+
+            isPaused: false
