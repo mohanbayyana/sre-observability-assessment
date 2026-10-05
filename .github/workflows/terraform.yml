@@ -148,3 +148,43 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
+
+      - name: Verify multi-cluster Gateway readiness
+        working-directory: .
+        run: |
+          set -euo pipefail
+
+          gcloud container clusters get-credentials \
+            gke-primary \
+            --region us-east1 \
+            --project mohan-sre-assessment-20261001
+
+          echo "=== Waiting for multi-cluster GatewayClass ==="
+
+          for i in {1..30}; do
+            if kubectl get gatewayclass \
+              gke-l7-global-external-managed-mc \
+              >/dev/null 2>&1; then
+
+              echo "Multi-cluster Gateway controller is ready."
+
+              kubectl get gatewayclass
+
+              gcloud container fleet ingress describe \
+                --project=mohan-sre-assessment-20261001
+
+              exit 0
+            fi
+
+            echo "Waiting for Gateway controller... ${i}/30"
+            sleep 20
+          done
+
+          echo "Multi-cluster Gateway controller did not become ready."
+          exit 1
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
