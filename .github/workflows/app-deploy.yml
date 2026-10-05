@@ -287,6 +287,7 @@ jobs:
         run: |
           kubectl apply -f kubernetes/gateway/gateway.yaml
           kubectl apply -f kubernetes/gateway/httproute.yaml
+          kubectl apply -f kubernetes/gateway/healthcheckpolicy.yaml
 
       - name: Verify global multi-cluster Gateway
         run: |
@@ -303,4 +304,9 @@ jobs:
           echo "=== HTTPRoute ==="
           kubectl get httproute \
             sre-observability-route \
+            -n sre-app
+
+          echo "=== HealthCheckPolicy ==="
+          kubectl get healthcheckpolicy \
+            sre-observability-healthcheck \
             -n sre-app
