@@ -151,6 +151,98 @@ jobs:
             --region us-east1 \
             --project mohan-sre-assessment-20261001
 
+      - name: Get primary GKE credentials
+        run: |
+          gcloud container clusters get-credentials \
+            gke-primary \
+            --region us-east1 \
+            --project mohan-sre-assessment-20261001
+
+      - name: Deploy application to primary cluster
+        run: |
+          kubectl apply -f kubernetes/app/namespace.yaml
+          kubectl apply -f kubernetes/app/networkpolicy.yaml
+          kubectl apply -f kubernetes/app/podmonitoring.yaml
+
+          sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" \
+            kubernetes/app/deployment.yaml \
+            | kubectl apply -f -
+
+          kubectl apply \
+            -f kubernetes/app/service.yaml
+
+      - name: Verify primary application rollout
+        run: |
+          kubectl rollout status \
+            deployment/sre-observability-app \
+            -n sre-app \
+            --timeout=5m
+
+          echo "=== Primary pods ==="
+          kubectl get pods \
+            -n sre-app \
+            -l app=sre-observability-app \
+            -o wide
+
+          echo "=== Primary service ==="
+          kubectl get service \
+            sre-observability-app \
+            -n sre-app
+
+          echo "=== Primary image ==="
+          kubectl get deployment \
+            sre-observability-app \
+            -n sre-app \
+            -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+          echo
+
+      - name: Get secondary GKE credentials
+        run: |
+          gcloud container clusters get-credentials \
+            gke-secondary \
+            --region us-west1 \
+            --project mohan-sre-assessment-20261001
+
+      - name: Deploy application to secondary cluster
+        run: |
+          kubectl apply -f kubernetes/app/namespace.yaml
+          kubectl apply -f kubernetes/app/networkpolicy.yaml
+          kubectl apply -f kubernetes/app/podmonitoring.yaml
+
+          sed "s|IMAGE_PLACEHOLDER|${IMAGE_URI}|g" \
+            kubernetes/app/deployment.yaml \
+            | kubectl apply -f -
+
+          kubectl apply \
+            -f kubernetes/app/service.yaml
+
+      - name: Verify secondary application rollout
+        run: |
+          kubectl rollout status \
+            deployment/sre-observability-app \
+            -n sre-app \
+            --timeout=5m
+
+          echo "=== Secondary pods ==="
+          kubectl get pods \
+            -n sre-app \
+            -l app=sre-observability-app \
+            -o wide
+
+          echo "=== Secondary service ==="
+          kubectl get service \
+            sre-observability-app \
+            -n sre-app
+
+          echo "=== Secondary image ==="
+          kubectl get deployment \
+            sre-observability-app \
+            -n sre-app \
+            -o jsonpath='{.spec.template.spec.containers[0].image}'
+
+          echo
+
       - name: Deploy application
         run: |
           kubectl apply -f kubernetes/app/namespace.yaml
