@@ -17,4 +17,4 @@ spec:
         - group: net.gke.io
           kind: ServiceImport
           name: sre-observability-app
-          port: 8080
+          port: 80
