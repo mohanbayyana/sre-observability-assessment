@@ -140,6 +140,14 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
 
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -172,16 +180,3 @@ jobs:
 
           gcloud container fleet ingress describe \
             --project=mohan-sre-assessment-20261001
-
-            echo "Waiting for Gateway controller... ${i}/30"
-            sleep 10
-          done
-
-          echo "Multi-cluster Gateway controller did not become ready."
-          exit 1
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v4
