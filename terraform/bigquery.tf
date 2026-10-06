@@ -44,12 +44,6 @@ resource "google_kms_crypto_key" "bigquery" {
   }
 }
 
-resource "google_kms_crypto_key" "bigquery" {
-  name            = "sre-bigquery-key"
-  key_ring        = google_kms_key_ring.bigquery.id
-  rotation_period = "7776000s"
-}
-
 resource "google_kms_crypto_key_iam_member" "bigquery_encrypter_decrypter" {
   crypto_key_id = google_kms_crypto_key.bigquery.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
