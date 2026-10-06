@@ -1,4 +1,6 @@
 resource "google_project_iam_member" "terraform_kms_admin" {
+  # checkov:skip=CKV_GCP_42:Terraform deployment service account requires KMS administration to provision and manage CMEK resources
+
   project = var.project_id
   role    = "roles/cloudkms.admin"
 
