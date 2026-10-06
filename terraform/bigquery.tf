@@ -1,10 +1,20 @@
+resource "google_project_iam_member" "terraform_kms_admin" {
+  # checkov:skip=CKV_GCP_42:Terraform deployment service account requires KMS administration to provision and manage CMEK resources
+
+  project = var.project_id
+  role    = "roles/cloudkms.admin"
+
+  member = "serviceAccount:terraform-github@${var.project_id}.iam.gserviceaccount.com"
+}
+
 resource "google_kms_key_ring" "bigquery" {
   name     = "sre-bigquery-keyring"
   project  = var.project_id
   location = "us"
 
   depends_on = [
-    google_project_service.kms
+    google_project_service.kms,
+    google_project_iam_member.terraform_kms_admin
   ]
 }
 
