@@ -7,7 +7,6 @@ resource "google_project_iam_member" "terraform_kms_admin" {
   member = "serviceAccount:terraform-github@${var.project_id}.iam.gserviceaccount.com"
 }
 
-
 resource "google_kms_key_ring" "bigquery" {
   name     = "sre-bigquery-keyring"
   project  = var.project_id
@@ -36,6 +35,13 @@ resource "google_kms_crypto_key_iam_member" "bigquery_encrypter_decrypter" {
   member = "serviceAccount:bq-${data.google_project.current.number}@bigquery-encryption.iam.gserviceaccount.com"
 }
 
+resource "google_project_iam_member" "terraform_bigquery_user" {
+  project = var.project_id
+  role    = "roles/bigquery.user"
+
+  member = "serviceAccount:terraform-github@${var.project_id}.iam.gserviceaccount.com"
+}
+
 resource "google_bigquery_dataset" "sre_logs" {
   # checkov:skip=CKV_GCP_81:Dataset uses Cloud KMS CMEK through default_encryption_configuration
 
@@ -50,7 +56,8 @@ resource "google_bigquery_dataset" "sre_logs" {
   }
 
   depends_on = [
-    google_kms_crypto_key_iam_member.bigquery_encrypter_decrypter
+    google_kms_crypto_key_iam_member.bigquery_encrypter_decrypter,
+    google_project_iam_member.terraform_bigquery_user
   ]
 }
 
