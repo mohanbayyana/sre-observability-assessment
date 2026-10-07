@@ -22,6 +22,11 @@ concurrency:
 jobs:
   terraform:
     name: Terraform CI / Security
+
+    # Run validation and security checks on PRs and pushes.
+    # Skip this job for manual Terraform Apply runs.
+    if: github.event_name != 'workflow_dispatch'
+
     runs-on: ubuntu-latest
 
     defaults:
@@ -119,11 +124,11 @@ jobs:
 
   apply:
     name: Terraform Apply
-    runs-on: ubuntu-latest
 
-    needs: terraform
-
+    # Run infrastructure deployment only when manually triggered from main.
     if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch'
+
+    runs-on: ubuntu-latest
 
     defaults:
       run:
@@ -157,6 +162,8 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
 
+      # Verify the multi-cluster Gateway controller is healthy
+      # after infrastructure changes are applied.
       - name: Verify multi-cluster Gateway readiness
         working-directory: .
         run: |
