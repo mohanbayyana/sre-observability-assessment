@@ -43,7 +43,7 @@ resource "google_kms_crypto_key_iam_member" "bigquery_encrypter_decrypter" {
   crypto_key_id = google_kms_crypto_key.bigquery.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
 
-  member = google_project_service_identity.bigquery.member
+  member = "serviceAccount:${google_project_service_identity.bigquery.email}"
 }
 
 resource "google_bigquery_dataset" "sre_logs" {
