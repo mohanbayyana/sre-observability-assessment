@@ -7,16 +7,6 @@ resource "google_project_iam_member" "terraform_kms_admin" {
   member = "serviceAccount:terraform-github@${var.project_id}.iam.gserviceaccount.com"
 }
 
-resource "google_project_service_identity" "bigquery" {
-  provider = google-beta
-
-  project = var.project_id
-  service = "bigquery.googleapis.com"
-
-  depends_on = [
-    google_project_service.bigquery
-  ]
-}
 
 resource "google_kms_key_ring" "bigquery" {
   name     = "sre-bigquery-keyring"
@@ -43,7 +33,7 @@ resource "google_kms_crypto_key_iam_member" "bigquery_encrypter_decrypter" {
   crypto_key_id = google_kms_crypto_key.bigquery.id
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
 
-  member = "serviceAccount:${google_project_service_identity.bigquery.email}"
+  member = "serviceAccount:bq-${data.google_project.current.number}@bigquery-encryption.iam.gserviceaccount.com"
 }
 
 resource "google_bigquery_dataset" "sre_logs" {
