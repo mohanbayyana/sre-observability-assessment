@@ -61,6 +61,13 @@ resource "google_bigquery_dataset" "sre_logs" {
   ]
 }
 
+resource "google_project_iam_member" "terraform_logging_config_writer" {
+  project = var.project_id
+  role    = "roles/logging.configWriter"
+
+  member = "serviceAccount:terraform-github@${var.project_id}.iam.gserviceaccount.com"
+}
+
 resource "google_logging_project_sink" "sre_app_logs" {
   name        = "sre-app-logs-to-bigquery"
   project     = var.project_id
@@ -76,6 +83,10 @@ EOT
   bigquery_options {
     use_partitioned_tables = true
   }
+
+  depends_on = [
+    google_project_iam_member.terraform_logging_config_writer
+  ]
 }
 
 resource "google_bigquery_dataset_iam_member" "sre_logs_writer" {
