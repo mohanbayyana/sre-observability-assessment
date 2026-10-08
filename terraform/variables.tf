@@ -51,3 +51,15 @@ variable "secondary_services_cidr" {
   type        = string
   default     = "10.130.0.0/20"
 }
+
+variable "domain_name" {
+  description = "Root domain used for the public application endpoint"
+  type        = string
+  default     = "sre-assessment.com"
+}
+
+variable "app_subdomain" {
+  description = "Subdomain for the SRE application"
+  type        = string
+  default     = "mohan"
+}

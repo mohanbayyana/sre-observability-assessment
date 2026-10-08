@@ -5,6 +5,11 @@ metadata:
   namespace: sre-app
 spec:
   gatewayClassName: gke-l7-global-external-managed-mc
+
+  addresses:
+    - type: NamedAddress
+      value: sre-global-gateway-ip
+
   listeners:
     - name: http
       protocol: HTTP
