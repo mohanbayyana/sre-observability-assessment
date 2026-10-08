@@ -42,3 +42,18 @@ output "secondary_region" {
 output "secondary_gke_cluster_name" {
   value = google_container_cluster.secondary.name
 }
+
+output "sre_gateway_static_ip" {
+  description = "Reserved global static IP for the GKE Gateway"
+  value       = google_compute_global_address.sre_gateway_ip.address
+}
+
+output "sre_dns_name" {
+  description = "Public DNS name for the SRE application"
+  value       = "${var.app_subdomain}.${var.domain_name}"
+}
+
+output "cloud_dns_name_servers" {
+  description = "Cloud DNS name servers to configure at the domain registrar"
+  value       = google_dns_managed_zone.sre_zone.name_servers
+}

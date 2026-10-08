@@ -45,12 +45,6 @@ resource "google_project_service" "traffic_director" {
   disable_on_destroy = false
 }
 
-resource "google_project_service" "dns" {
-  project            = var.project_id
-  service            = "dns.googleapis.com"
-  disable_on_destroy = false
-}
-
 resource "google_project_service" "resource_manager" {
   project            = var.project_id
   service            = "cloudresourcemanager.googleapis.com"
@@ -66,5 +60,12 @@ resource "google_project_service" "kms" {
 resource "google_project_service" "bigquery" {
   project            = var.project_id
   service            = "bigquery.googleapis.com"
+  disable_on_destroy = false
+}
+
+resource "google_project_service" "dns" {
+  project = var.project_id
+  service = "dns.googleapis.com"
+
   disable_on_destroy = false
 }
