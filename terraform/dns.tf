@@ -7,8 +7,11 @@ resource "google_dns_managed_zone" "sre_zone" {
   name        = "sre-public-zone"
   dns_name    = "${var.domain_name}."
   description = "Public DNS zone for SRE application"
+  project     = var.project_id
 
-  project = var.project_id
+  dnssec_config {
+    state = "on"
+  }
 
   depends_on = [
     google_project_service.dns
