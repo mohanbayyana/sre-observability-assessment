@@ -729,3 +729,46 @@ This platform demonstrates:
 - Least-privilege IAM
 - Centralized log analytics
 - Production troubleshooting
+
+
+## Evidence
+
+### GKE clusters healthy
+
+![GKE clusters healthy](evidence/01-gke-clusters-healthy.png)
+
+### Fleet and multi-cluster readiness
+
+![Fleet dashboard](evidence/02a-fleet-dashboard.png)
+
+![Fleet MCS and Gateway](evidence/02b-fleet-mcs-gateway-ready.png)
+
+### Global traffic
+
+![Global traffic](evidence/03-global-traffic.png)
+
+### Centralized observability
+
+![Grafana both clusters](evidence/04-grafana-both-clusters.png)
+
+### Regional failover
+
+![Primary scaled to zero with global 200](evidence/05a-primary-scaled-zero-global-200.png)
+
+![Secondary serving traffic](evidence/05b-secondary-serving-after-failover.png)
+
+### BigQuery log analytics
+
+![BigQuery dataset](evidence/06a-bigquery-dataset.png)
+
+![Logging sink](evidence/06b-logging-sink.png)
+
+![BigQuery cluster analysis](evidence/06c-bigquery-cluster-analysis.png)
+
+![BigQuery recent logs](evidence/06d-bigquery-recent-logs.png)
+
+### Alerting
+
+![Error rate alert firing](evidence/07a-error-rate-alert-firing.png)
+
+![p95 latency alert firing](evidence/07b-p95-latency-alert-firing.png)
